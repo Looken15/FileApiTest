@@ -22,5 +22,10 @@ namespace TestApi.Repository
         {
             return context.Files.FirstOrDefault(x => x.Id == id);
         }
+
+        public IQueryable<FileModel> GetFiles()
+        {
+            return context.Files;
+        }
     }
 }

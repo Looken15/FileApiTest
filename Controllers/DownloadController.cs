@@ -22,23 +22,6 @@ namespace TestApi.Controllers
             service = _service;
         }
 
-        //[HttpGet("download")]
-        //public FileStreamResult Download()
-        //{
-        //    var stream = System.IO.File.OpenRead(@"C:\Users\Tema-\Desktop\TestApi\abc.txt");
-        //    try
-        //    {
-        //        return new FileStreamResult(stream, "application/octet-stream")
-        //        {
-        //            FileDownloadName = "myfile.txt"
-        //        };
-        //    }
-        //    finally
-        //    {
-        //        //stream.Close();
-        //    }
-        //}
-
         [HttpPost("upload")]
         public string Upload(IFormFile file)
         {
@@ -50,6 +33,12 @@ namespace TestApi.Controllers
         public FileStreamResult Download(int id)
         {
             return service.GetFile(id);
+        }
+
+        [HttpGet("listUploaded")]
+        public FilesInfo[] GetListUploaded()
+        {
+            return service.GetAllFiles();
         }
     }
 }

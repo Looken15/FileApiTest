@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.IO;
 using TestApi.Interfaces;
 using TestApi.Models;
+using System.Linq;
 
 namespace TestApi.BLL
 {
@@ -38,5 +39,17 @@ namespace TestApi.BLL
                 FileDownloadName = dbfile.FileName
             };
         }
+
+        public FilesInfo[] GetAllFiles()
+        {
+            return repository.GetFiles()
+                             .Select(x => new FilesInfo
+                             {
+                                 Id = x.Id,
+                                 FileName = x.FileName
+                             })
+                             .ToArray();
+        }
+
     }
 }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using TestApi.Models;
 
 namespace TestApi.Interfaces
 {
@@ -7,5 +8,6 @@ namespace TestApi.Interfaces
     {
         (string, int) AddFile(IFormFile file);
         FileStreamResult GetFile(int id);
+        FilesInfo[] GetAllFiles();
     }
 }

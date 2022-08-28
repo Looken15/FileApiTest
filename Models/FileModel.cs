@@ -1,9 +1,7 @@
 namespace TestApi.Models
 {
-    public class FileModel
+    public class FileModel : FilesInfo
     {
-        public int Id { get; set; }
         public byte[] Content { get; set; }
-        public string FileName { get; set; }
     }
 }

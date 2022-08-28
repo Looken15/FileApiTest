@@ -1,3 +1,4 @@
+using System.Linq;
 using TestApi.Models;
 
 namespace TestApi.Interfaces
@@ -6,5 +7,6 @@ namespace TestApi.Interfaces
     {
         void Add(FileModel fileModel);
         FileModel GetFile(int id);
+        IQueryable<FileModel> GetFiles();
     }
 }
