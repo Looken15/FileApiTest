@@ -7,6 +7,9 @@ using System.Linq;
 using System.Net;
 using System;
 using Base62;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace TestApi.BLL
 {
@@ -16,6 +19,7 @@ namespace TestApi.BLL
         {
             LinkUsed,
             WrongRequest,
+            MissingFile,
             OK
         }
 
@@ -28,28 +32,40 @@ namespace TestApi.BLL
             linksService = _linksService;
         }
 
-        public (string, int) AddFile(IFormFile file)
+        public async Task<(string, int)> AddFile(IFormFile file)
         {
-            using (var reader = new BinaryReader(file.OpenReadStream()))
+            var fileModel = new FileModel
             {
-                var fileModel = new FileModel
-                {
-                    FileName = file.FileName,
-                    Content = reader.ReadBytes((int)reader.BaseStream.Length)
-                };
-                repository.Add(fileModel);
-                return (fileModel.FileName, fileModel.Id);
-            }
+                FileName = file.FileName,
+                Content = Enumerable.Empty<byte>().ToArray()
+            };
+            repository.Add(fileModel);
+            var t = Upload(file, fileModel.Id).ConfigureAwait(false);
+            return (fileModel.FileName, fileModel.Id);
         }
 
-        public FileStreamResult GetFile(int id)
+        public async Task<string> AddFiles(List<IFormFile> files)
+        {
+            var sb = new StringBuilder();
+            foreach (var file in files)
+            {
+                var fileInfo = await AddFile(file).ConfigureAwait(false);
+                sb.AppendLine($"File {fileInfo.Item1} was successfully added with id {fileInfo.Item2}\n");
+            }
+            return sb.ToString();
+        }
+
+        public (bool, FileStreamResult) GetFile(int id)
         {
             var dbfile = repository.GetFile(id);
+            if (dbfile == null)
+                return (false, null);
             var stream = new MemoryStream(dbfile.Content);
-            return new FileStreamResult(stream, fileMimeType)
-            {
-                FileDownloadName = dbfile.FileName
-            };
+            return (true,
+                new FileStreamResult(stream, fileMimeType)
+                {
+                    FileDownloadName = dbfile.FileName
+                });
         }
 
         public (LinkCheck, FileStreamResult) GetOneTimeLinkFile(string encoded)
@@ -76,7 +92,10 @@ namespace TestApi.BLL
 
             linksService.SetUsed(check.Item2);
 
-            return (LinkCheck.OK, GetFile(id));
+            var file = GetFile(id);
+            if (!file.Item1)
+                return (LinkCheck.MissingFile, null);
+            return (LinkCheck.OK, file.Item2);
         }
 
         public FilesInfo[] GetAllFiles()
@@ -88,6 +107,32 @@ namespace TestApi.BLL
                                  FileName = x.FileName
                              })
                              .ToArray();
+        }
+
+        private async Task Upload(IFormFile file, int id)
+        {
+            byte[] buffer = new byte[16 * 1024];
+
+            FileModel fileModel = repository.GetFile(id);
+
+            long totalBytes = file.Length;
+            long totalReadBytes = 0;
+            using (var reader = new BinaryReader(file.OpenReadStream()))
+            {
+                int readBytes;
+                while ((readBytes = reader.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    fileModel.Content = fileModel.Content.Concat(buffer).ToArray();
+                    //repository.Update(fileModel);
+                    repository.Update(fileModel);
+                    totalReadBytes += readBytes;
+
+                    if (Startup.FilesProgress.ContainsKey(fileModel.Id))
+                        Startup.FilesProgress[fileModel.Id] = (int)((float)totalReadBytes / (float)totalBytes * 100.0);
+                    else
+                        Startup.FilesProgress.Add(fileModel.Id, (int)((float)totalReadBytes / (float)totalBytes * 100.0));
+                }
+            }
         }
     }
 }

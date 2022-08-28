@@ -28,25 +28,36 @@ namespace TestApi.Controllers
         }
 
         [HttpPost("upload")]
-        public string Upload(IFormFile file)
+        public async Task<string> Upload(List<IFormFile> files)
         {
-            var fileInfo = filesService.AddFile(file);
-            return $"File {fileInfo.Item1} was successfully added with id {fileInfo.Item2}";
+            return await filesService.AddFiles(files);
         }
 
         [HttpPost("uploadAndGenerateLink")]
-        public string UploadAndGenerateLink(IFormFile file)
+        public async Task<string> UploadAndGenerateLink(IFormFile file)
         {
-            var fileInfo = filesService.AddFile(file);
+            var fileInfo = await filesService.AddFile(file);
             var link = linksService.GenerateLink(fileInfo.Item2, Request.Host.Value);
             return $"File {fileInfo.Item1} was successfully added with id {fileInfo.Item2}\n" +
                 $"Link to download: {link}";
         }
 
-        [HttpGet("download/{id}")]
-        public FileStreamResult Download(int id)
+        [HttpGet("progress/{id}")]
+        public string Progress(int id)
         {
-            return filesService.GetFile(id);
+            if (Startup.FilesProgress.ContainsKey(id))
+                return Startup.FilesProgress[id].ToString() + "%";
+            else
+                return "File has either not been uploaded yet or is missing from the database";
+        }
+
+        [HttpGet("download/{id}")]
+        public IActionResult Download(int id)
+        {
+            var result = filesService.GetFile(id);
+            if (!result.Item1)
+                return Content("File is missing from the database");
+            return result.Item2;
         }
 
         [HttpGet("download/{link}/{encoded}")]
@@ -58,6 +69,8 @@ namespace TestApi.Controllers
                 return Content("Wrong one-time link");
             if (result.Item1 == LinkCheck.LinkUsed)
                 return Content("This link has already been used");
+            if (result.Item1 == LinkCheck.MissingFile)
+                return Content("File is missing from the database");
             return result.Item2;
         }
 

@@ -1,6 +1,7 @@
 using TestApi.Interfaces;
 using TestApi.Models;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace TestApi.Repository
 {
@@ -14,7 +15,13 @@ namespace TestApi.Repository
 
         public void Add(FileModel fileModel)
         {
-            context.Files.Add(fileModel);
+            _ = context.Files.AddAsync(fileModel).ConfigureAwait(false);
+            context.SaveChanges();
+        }
+
+        public void Update(FileModel fileModel)
+        {
+            context.Files.Update(fileModel);
             context.SaveChanges();
         }
 

@@ -20,8 +20,10 @@ namespace TestApi
 {
     public class Startup
     {
+        public static Dictionary<int, int> FilesProgress { get; set; }
         public Startup(IConfiguration configuration)
         {
+            FilesProgress = new Dictionary<int, int>();
             Configuration = configuration;
         }
 
