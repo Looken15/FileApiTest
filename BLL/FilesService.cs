@@ -4,16 +4,28 @@ using System.IO;
 using TestApi.Interfaces;
 using TestApi.Models;
 using System.Linq;
+using System.Net;
+using System;
+using Base62;
 
 namespace TestApi.BLL
 {
     public class FilesService : IFilesService
     {
+        public enum LinkCheck
+        {
+            LinkUsed,
+            WrongRequest,
+            OK
+        }
+
         private readonly string fileMimeType = "application/octet-stream";
         private readonly IFilesRepository repository;
-        public FilesService(IFilesRepository _repository)
+        private readonly ILinksService linksService;
+        public FilesService(IFilesRepository _repository, ILinksService _linksService)
         {
             repository = _repository;
+            linksService = _linksService;
         }
 
         public (string, int) AddFile(IFormFile file)
@@ -40,6 +52,33 @@ namespace TestApi.BLL
             };
         }
 
+        public (LinkCheck, FileStreamResult) GetOneTimeLinkFile(string encoded)
+        {
+            var converter = new Base62Converter();
+            var decoded = converter.Decode(encoded);
+
+            var splitted = decoded.Split(new char[] { '?' }, StringSplitOptions.RemoveEmptyEntries);
+            if (splitted[0] != "Download")
+                return (LinkCheck.WrongRequest, null);
+
+
+            var parametersSplit = splitted[1].Split(new char[] { '&' });
+            var idParamSplit = parametersSplit[0].Split(new char[] { '=' });
+            if (idParamSplit[0] != "id" || !int.TryParse(idParamSplit[1], out int id))
+                return (LinkCheck.WrongRequest, null);
+            var guidParamSplit = parametersSplit[1].Split(new char[] { '=' });
+            if (guidParamSplit[0] != "guid" || !Guid.TryParse(guidParamSplit[1], out Guid guid))
+                return (LinkCheck.WrongRequest, null);
+
+            var check = linksService.CheckLink(id, guid);
+            if (!check.Item1)
+                return (LinkCheck.LinkUsed, null);
+
+            linksService.SetUsed(check.Item2);
+
+            return (LinkCheck.OK, GetFile(id));
+        }
+
         public FilesInfo[] GetAllFiles()
         {
             return repository.GetFiles()
@@ -50,6 +89,5 @@ namespace TestApi.BLL
                              })
                              .ToArray();
         }
-
     }
 }

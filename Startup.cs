@@ -35,6 +35,10 @@ namespace TestApi
 
             services.AddTransient<IFilesRepository, FilesRepository>();
             services.AddTransient<IFilesService, FilesService>();
+
+            services.AddTransient<ILinksRepository, LinksRepository>();
+            services.AddTransient<ILinksService, LinksService>();
+
             services.AddControllers();
             services.AddSwaggerGen(c =>
             {

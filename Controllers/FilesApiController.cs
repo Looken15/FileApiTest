@@ -1,0 +1,76 @@
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using Microsoft.Net.Http.Headers;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Threading.Tasks;
+using TestApi.Interfaces;
+using TestApi.Models;
+using static TestApi.BLL.FilesService;
+
+namespace TestApi.Controllers
+{
+    [ApiController]
+    [Route("[controller]")]
+    public class FilesApiController : ControllerBase
+    {
+        private readonly IFilesService filesService;
+        private readonly ILinksService linksService;
+        public FilesApiController(IFilesService _filesService, ILinksService _linksService)
+        {
+            filesService = _filesService;
+            linksService = _linksService;
+        }
+
+        [HttpPost("upload")]
+        public string Upload(IFormFile file)
+        {
+            var fileInfo = filesService.AddFile(file);
+            return $"File {fileInfo.Item1} was successfully added with id {fileInfo.Item2}";
+        }
+
+        [HttpPost("uploadAndGenerateLink")]
+        public string UploadAndGenerateLink(IFormFile file)
+        {
+            var fileInfo = filesService.AddFile(file);
+            var link = linksService.GenerateLink(fileInfo.Item2, Request.Host.Value);
+            return $"File {fileInfo.Item1} was successfully added with id {fileInfo.Item2}\n" +
+                $"Link to download: {link}";
+        }
+
+        [HttpGet("download/{id}")]
+        public FileStreamResult Download(int id)
+        {
+            return filesService.GetFile(id);
+        }
+
+        [HttpGet("download/{link}/{encoded}")]
+        [ApiExplorerSettings(IgnoreApi = true)]
+        public IActionResult Download(string encoded, bool link)
+        {
+            var result = filesService.GetOneTimeLinkFile(encoded);
+            if (result.Item1 == LinkCheck.WrongRequest)
+                return Content("Wrong one-time link");
+            if (result.Item1 == LinkCheck.LinkUsed)
+                return Content("This link has already been used");
+            return result.Item2;
+        }
+
+        [HttpGet("listUploaded")]
+        public FilesInfo[] GetListUploaded()
+        {
+            return filesService.GetAllFiles();
+        }
+
+        [HttpGet("generateLink/{id}")]
+        public string GenerateLink(int id)
+        {
+            return linksService.GenerateLink(id, Request.Host.Value);
+        }
+    }
+}
